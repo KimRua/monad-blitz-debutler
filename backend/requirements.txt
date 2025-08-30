@@ -1,0 +1,9 @@
+flask
+gunicorn
+flask_sqlalchemy
+sqlalchemy
+pymysql
+cryptography
+PyJWT
+qrcode
+pillow
