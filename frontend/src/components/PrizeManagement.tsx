@@ -2,10 +2,16 @@ import React, { useState } from 'react';
 import { Plus, X, Image } from 'lucide-react';
 import Layout, { GridContainer, GridItem, Card, Button, Input } from './Layout';
 import { useEvent } from '../contexts/EventContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { createPrize } from '../services/api';
 
 const PrizeManagement = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const eventId = location.state?.eventId;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const { prizes = [], updatePrizes } = useEvent();
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -51,16 +57,11 @@ const PrizeManagement = () => {
     ));
   };
 
+  // 이미지 업로드: File 객체 자체를 저장
   const handleImageUpload = (id: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          updatePrize(id, 'image', e.target.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      updatePrize(id, 'image', file);
     }
   };
 
@@ -76,6 +77,40 @@ const PrizeManagement = () => {
   const getRankIcon = (index: number) => {
     const icons = ['🥇', '🥈', '🥉'];
     return icons[index] || '🏆';
+  };
+
+  // 경품 등록 핸들러
+  const handleRegisterPrizes = async () => {
+    setError(null);
+    setSuccess(false);
+    if (!eventId) {
+      setError('이벤트 ID가 없습니다.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken') || '';
+      for (const prize of prizes) {
+        if (!prize.name || !prize.winners) {
+          setError('모든 경품의 이름과 당첨 인원을 입력하세요.');
+          setLoading(false);
+          return;
+        }
+        await createPrize(token, {
+          event_id: eventId,
+          name: prize.name,
+          winners_count: prize.winners,
+          description: prize.description,
+          imageFile: prize.image instanceof File ? prize.image : undefined
+        });
+      }
+      setSuccess(true);
+      setTimeout(() => navigate('/field-settings', { state: { eventId } }), 1200);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || '경품 등록에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,7 +167,7 @@ const PrizeManagement = () => {
                       {prize.image ? (
                         <div className="relative w-full h-full">
                           <img
-                            src={prize.image}
+                            src={prize.image instanceof File ? URL.createObjectURL(prize.image) : prize.image}
                             alt={prize.name || '경품 이미지'}
                             className="w-full h-full object-cover rounded-xl"
                           />
@@ -251,10 +286,13 @@ const PrizeManagement = () => {
         <Button 
           variant="primary" 
           size="lg"
-          onClick={() => navigate('/field-settings')}
+          onClick={handleRegisterPrizes}
+          disabled={loading}
         >
-          다음 단계
+          {loading ? '등록 중...' : '다음 단계'}
         </Button>
+        {error && <div className="text-red-500 mt-4">{error}</div>}
+        {success && <div className="text-green-600 mt-4">경품이 성공적으로 등록되었습니다!</div>}
       </div>
     </Layout>
   );

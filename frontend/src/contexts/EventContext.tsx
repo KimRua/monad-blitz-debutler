@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState } from 'react';
 
 // 타입 정의
 interface EventData {
+  id: number;
   eventName: string;
   startDate: string;
   startHour: string;
@@ -88,6 +89,7 @@ export const useEvent = (): EventContextType => {
 
 export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [eventData, setEventData] = useState<EventData>({
+    id: 1, // 실제 이벤트 생성 시 동적으로 할당 필요
     eventName: '2025년 신년 경품 이벤트',
     startDate: '2025-01-15',
     startHour: '10',
@@ -125,17 +127,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   ]);
 
-  const [fields, setFields] = useState<Field[]>([
-    { id: 1, name: '이름', isRequired: true, isDefault: true },
-    { id: 2, name: '이메일', isRequired: true, isDefault: true },
-    { id: 3, name: '전화', isRequired: false, isDefault: true },
-    { id: 4, name: 'ETH 주소', isRequired: true, isDefault: true, isFixed: true },
-    { id: 5, name: 'SOL 주소', isRequired: false, isDefault: true }
-  ]);
+  const [fields, setFields] = useState<Field[]>([]);
 
-  const [customFields, setCustomFields] = useState<Field[]>([
-    { id: 6, name: '회사명', isRequired: false, isDefault: false }
-  ]);
+  const [customFields, setCustomFields] = useState<Field[]>([]);
 
   // 더미 응모 데이터
   const [entryData, setEntryData] = useState({

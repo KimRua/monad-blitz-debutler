@@ -1,19 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Clock, Hourglass, QrCode } from 'lucide-react';
 import Layout, { GridContainer, GridItem, Card } from './Layout';
-import { useEvent } from '../contexts/EventContext';
+import { useLocation } from 'react-router-dom';
 
 const QRPage = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  // 더미 이벤트 데이터
+  // 라우터에서 eventId 전달받기 (useLocation)
+  const location = useLocation();
+  const eventId = location.state?.eventId;
+
+  // 실제 이벤트 데이터 (더미 제거, 추후 API 연동 가능)
   const [entryCount, setEntryCount] = useState(1247);
-  const eventData = {
-    eventName: '2025 신년 경품 이벤트',
+  const [eventData] = useState({
+    eventName: '이벤트',
     endDate: '2025-01-31',
-    endTime: '18:00'
-  };
+    endTime: '18:00',
+  });
+
+  // QR 이미지 URL
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (eventId) {
+      setQrUrl(`/api/events/${eventId}/qr`);
+    } else {
+      setQrUrl(null);
+    }
+  }, [eventId]);
   
   // 1초마다 현재 시간 업데이트하고 가끔 응모자 수도 증가
   useEffect(() => {
@@ -158,35 +173,26 @@ const QRPage = () => {
                   </div>
                 </div>
 
-                {/* QR 코드 */}
+                {/* 실제 QR 이미지 */}
                 <div className="flex justify-center">
                   <div className="relative group">
-                    <div className="w-96 h-96 bg-white rounded-2xl p-6 shadow-2xl border-4 border-white dark:border-gray-200 group-hover:scale-105 transition-all duration-500">
-                      <div className="w-full h-full bg-white rounded-xl flex items-center justify-center relative overflow-hidden border border-gray-200">
-                        {/* QR Code Pattern */}
-                        <div className="grid grid-cols-25 gap-0 w-80 h-80">
-                          {(() => {
-                            const qrPattern = generateQRPattern();
-                            return qrPattern.map((row, rowIndex) => 
-                              row.map((isBlack, colIndex) => (
-                                <div
-                                  key={`${rowIndex}-${colIndex}`}
-                                  className={`w-full h-full ${isBlack ? 'bg-black' : 'bg-white'}`}
-                                />
-                              ))
-                            ).flat();
-                          })()}
-                        </div>
-                        
-                        {/* 중앙 로고 */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-16 h-16 bg-white rounded-lg shadow-lg border-2 border-gray-300 flex items-center justify-center">
-                            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded flex items-center justify-center">
-                              <span className="text-white font-bold text-lg">M</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="w-96 h-96 bg-white rounded-2xl p-6 shadow-2xl border-4 border-white dark:border-gray-200 group-hover:scale-105 transition-all duration-500 flex items-center justify-center">
+                      {eventId ? (
+                        qrUrl ? (
+                          <img
+                            src={qrUrl}
+                            alt="이벤트 QR 코드"
+                            className="w-80 h-80 object-contain rounded-xl border border-gray-200"
+                            onError={e => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-80 h-80 flex items-center justify-center text-gray-400">QR 이미지를 불러오는 중...</div>
+                        )
+                      ) : (
+                        <div className="w-80 h-80 flex items-center justify-center text-gray-400">eventId가 없습니다. QR 이미지를 표시할 수 없습니다.</div>
+                      )}
                     </div>
                   </div>
                 </div>
