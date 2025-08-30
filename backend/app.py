@@ -1,3 +1,4 @@
+import csv
 import io
 import qrcode
 from flask import Flask, jsonify, request, send_file
@@ -219,7 +220,7 @@ def login():
 @app.route('/api/events/<int:event_id>/qr', methods=['GET'])
 def event_qr(event_id):
     # 실제 서비스라면, 프론트엔드의 응모 페이지 URL을 아래에 맞게 작성
-    base_url = os.environ.get('ENTRY_PAGE_URL', 'https://example.com/entry')
+    base_url = os.environ.get('ENTRY_PAGE_URL', 'http://localhost/mobile')
     qr_url = f"{base_url}?event_id={event_id}"
     img = qrcode.make(qr_url)
     buf = io.BytesIO()
@@ -227,6 +228,32 @@ def event_qr(event_id):
     buf.seek(0)
     return send_file(buf, mimetype='image/png', as_attachment=False, download_name=f'event_{event_id}_qr.png')
 
+
+# CSV 헤더(필드명) 추출 API
+@app.route('/api/events/<int:event_id>/csv-fields', methods=['GET'])
+def get_event_csv_fields(event_id):
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'error': 'Authorization header required'}), 401
+    try:
+        token = token.replace('Bearer ', '')
+        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        user_id = payload['user_id']
+    except Exception:
+        return jsonify({'error': 'invalid token'}), 401
+    with session_scope() as s:
+        event = s.query(Event).filter_by(id=event_id, owner_id=user_id).first()
+        if not event:
+            return jsonify({'error': 'event not found or not owned by user'}), 404
+        if not event.upload_csv_path or not os.path.exists(event.upload_csv_path):
+            return jsonify({'error': 'csv file not found'}), 404
+        try:
+            with open(event.upload_csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                headers = next(reader)
+            return jsonify({'fields': headers})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/api/health')
 def health():

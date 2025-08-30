@@ -51,7 +51,7 @@ const EntryStatus = () => {
     const endTime = new Date(eventStatus.endTime);
     const now = currentTime;
     const timeDiff = endTime.getTime() - now.getTime();
-
+  // 중복 선언 제거: 아무것도 하지 않음
     if (timeDiff <= 0) {
       return { hours: 0, minutes: 0, seconds: 0, isExpired: true };
     }
@@ -86,7 +86,9 @@ const EntryStatus = () => {
   };
 
   const handleQRClick = () => {
-    window.open('/qr-page', '_blank');
+    // eventId는 useEvent().eventData에서 받아옴 (id가 없으면 경고)
+    // eventData에 id가 없으면 undefined 전달
+    navigate('/qr-page', { state: { eventId: (eventData as any).id } });
   };
 
   const handleCopyLink = async () => {
@@ -127,7 +129,6 @@ const EntryStatus = () => {
   return (
     <Layout 
       isDarkMode={isDarkMode}
-      setIsDarkMode={setIsDarkMode}
       pageTitle="응모 현황"
     >
       {/* 페이지 헤더 */}
@@ -226,13 +227,15 @@ const EntryStatus = () => {
                   )}
                 </button>
                 
-                <button
-                  onClick={handleQRClick}
+                <a
+                  href={`/qr-page?eventId=${encodeURIComponent((eventData as any).id)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-all duration-200 hover:shadow-md text-sm"
                 >
                   <Eye size={14} />
                   <span>QR 페이지 보기</span>
-                </button>
+                </a>
               </div>
             </div>
           </Card>

@@ -3,23 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Upload, CheckCircle, AlertCircle, Settings, User, Wallet, ChevronDown } from 'lucide-react';
 import Layout, { GridContainer, GridItem, Card, Button, Input } from './Layout';
 import { useEvent } from '../contexts/EventContext';
+import { createEvent } from '../services/api';
 
 const EventCreation = () => {
   const navigate = useNavigate();
   const { eventData, updateEventData } = useEvent();
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [formData, setFormData] = useState(eventData || {
-    eventName: '',
-    startDate: '',
-    startHour: '09',
-    startMinute: '00',
-    endDate: '',
-    endHour: '18',
-    endMinute: '00',
-    capacity: 'unlimited',
-    customCapacity: 100,
-    csvFile: null
-  });
+  const [formData, setFormData] = useState(eventData);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const [showStartCalendar, setShowStartCalendar] = useState(false);
   const [showEndCalendar, setShowEndCalendar] = useState(false);
@@ -84,7 +77,7 @@ const EventCreation = () => {
   };
 
   const handleDateSelect = (dateString: string, type: 'start' | 'end') => {
-    handleInputChange(type === 'start' ? 'startDate' : 'endDate', dateString);
+    handleInputChange(type === 'start' ? 'start_date' : 'end_date', dateString);
     if (type === 'start') {
       setShowStartCalendar(false);
     } else {
@@ -171,6 +164,36 @@ const EventCreation = () => {
         </div>
       </div>
     );
+  };
+
+  // 이벤트 생성 핸들러
+  const handleCreateEvent = async () => {
+    setError(null);
+    setSuccess(false);
+    if (!formData.eventName || !formData.startDate || !formData.endDate) {
+      setError('이벤트명, 시작일, 종료일을 모두 입력하세요.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const start_at = formData.startDate + 'T' + (formData.startHour || '09') + ':' + (formData.startMinute || '00') + ':00';
+      const end_at = formData.endDate + 'T' + (formData.endHour || '18') + ':' + (formData.endMinute || '00') + ':00';
+      const token = localStorage.getItem('adminToken') || '';
+      const result = await createEvent(token, {
+        name: formData.eventName,
+        start_at,
+        end_at,
+        participant_cap: formData.capacity === 'limited' ? formData.customCapacity : undefined,
+        csvFile: formData.csvFile || undefined
+      });
+      setSuccess(true);
+      // 생성된 이벤트 ID를 상태로 전달하며 /prize-management로 이동
+      setTimeout(() => navigate('/prize-management', { state: { eventId: result.id } }), 1200);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || '이벤트 생성에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -510,13 +533,13 @@ const EventCreation = () => {
         <Button
           variant="primary"
           size="lg"
-          onClick={() => {
-            updateEventData(formData);
-            navigate('/prize-management');
-          }}
+          onClick={handleCreateEvent}
+          disabled={loading}
         >
-          이벤트 생성하기
+          {loading ? '등록 중...' : '이벤트 생성하기'}
         </Button>
+        {error && <div className="text-red-500 mt-4">{error}</div>}
+        {success && <div className="text-green-600 mt-4">이벤트가 성공적으로 등록되었습니다!</div>}
       </div>
     </Layout>
   );

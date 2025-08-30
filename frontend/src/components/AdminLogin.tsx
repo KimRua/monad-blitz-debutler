@@ -8,7 +8,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -28,8 +28,8 @@ const AdminLogin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.username || !formData.password) {
-      setError('아이디와 비밀번호를 모두 입력해주세요.');
+    if (!formData.email || !formData.password) {
+      setError('이메일과 비밀번호를 모두 입력해주세요.');
       return;
     }
 
@@ -37,20 +37,14 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      console.log('🚀 로그인 시도:', formData.username);
-      
-      // API 호출 시도 (실패해도 더미 데이터로 폴백됨)
-      const response = await login(formData.username, formData.password);
-      
-      // API 호출 결과 (성공 또는 폴백) 처리
-      localStorage.setItem('adminToken', response.token);
-      localStorage.setItem('adminUsername', response.user.username);
-      localStorage.setItem('adminUser', JSON.stringify(response.user));
-      
-      console.log('✅ 로그인 성공:', response.user.username);
-      
-      // event-list 페이지로 이동
-      navigate('/event-list');
+  console.log('🚀 로그인 시도:', formData.email);
+  // 실제 백엔드 로그인 API 호출
+  const response = await login(formData.email, formData.password);
+  localStorage.setItem('adminToken', response.token);
+  localStorage.setItem('adminEmail', response.user.email);
+  localStorage.setItem('adminUser', JSON.stringify(response.user));
+  console.log('✅ 로그인 성공:', response.user.email);
+  navigate('/event-list');
       
     } catch (err) {
       console.error('❌ 로그인 오류:', err);
@@ -91,20 +85,20 @@ const AdminLogin = () => {
         <div className="w-full max-w-md">
           <Card isDarkMode={isDarkMode} className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* 아이디 입력 */}
+              {/* 이메일 입력 */}
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  아이디
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  이메일
                 </label>
                 <div className="relative">
                   <input
-                    type="text"
-                    id="username"
-                    name="username"
-                    value={formData.username}
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors"
-                    placeholder="아이디를 입력하세요"
+                    placeholder="이메일을 입력하세요"
                     disabled={isLoading}
                   />
                 </div>

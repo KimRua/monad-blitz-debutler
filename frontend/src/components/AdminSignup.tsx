@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import { UserPlus, Eye, EyeOff, Shield, ArrowLeft } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import Layout, { Card, Button } from './Layout';
 import { useNavigate } from 'react-router-dom';
+import { register } from '../services/api';
 
 const AdminSignup = () => {
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    confirmPassword: '',
     email: '',
-    organization: ''
+    password: '',
+    confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -29,13 +28,8 @@ const AdminSignup = () => {
   };
 
   const validateForm = () => {
-    if (!formData.username || !formData.password || !formData.confirmPassword || !formData.email || !formData.organization) {
+    if (!formData.email || !formData.password || !formData.confirmPassword) {
       setError('모든 필드를 입력해주세요.');
-      return false;
-    }
-
-    if (formData.username.length < 4) {
-      setError('아이디는 4자 이상이어야 합니다.');
       return false;
     }
 
@@ -43,12 +37,10 @@ const AdminSignup = () => {
       setError('비밀번호는 6자 이상이어야 합니다.');
       return false;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return false;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('올바른 이메일 형식을 입력해주세요.');
@@ -69,17 +61,12 @@ const AdminSignup = () => {
     setError('');
 
     try {
-      // 로딩 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // 더미 회원가입 성공 처리
-      // 실제로는 백엔드에서 계정 생성 후 성공 응답
-      
-      // 회원가입 성공 시 로그인 페이지로 이동
+      // 실제 백엔드 회원가입 API 호출
+      await register(formData.email, formData.password);
       navigate('/admin-login', { 
         state: { 
           message: '회원가입이 완료되었습니다. 로그인해주세요.',
-          username: formData.username 
+          email: formData.email 
         } 
       });
     } catch (err) {
@@ -124,22 +111,7 @@ const AdminSignup = () => {
         <div className="w-full max-w-md">
           <Card isDarkMode={isDarkMode} className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* 아이디 입력 */}
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  아이디 *
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors"
-                  placeholder="4자 이상의 아이디를 입력하세요"
-                  disabled={isLoading}
-                />
-              </div>
+
 
               {/* 이메일 입력 */}
               <div>
@@ -158,22 +130,7 @@ const AdminSignup = () => {
                 />
               </div>
 
-              {/* 소속/기관 입력 */}
-              <div>
-                <label htmlFor="organization" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  소속/기관 *
-                </label>
-                <input
-                  type="text"
-                  id="organization"
-                  name="organization"
-                  value={formData.organization}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors"
-                  placeholder="소속 또는 기관명을 입력하세요"
-                  disabled={isLoading}
-                />
-              </div>
+
 
               {/* 비밀번호 입력 */}
               <div>

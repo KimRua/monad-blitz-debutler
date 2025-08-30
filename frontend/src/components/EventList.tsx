@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Clock, Plus, Search, Filter, MoreVertical, ChevronDown } from 'lucide-react';
 import Layout, { Card, Button } from './Layout';
 import { useNavigate } from 'react-router-dom';
+import { getMyEvents } from '../services/api';
 
 const EventList = () => {
   const navigate = useNavigate();
@@ -9,53 +10,27 @@ const EventList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // 더미 이벤트 데이터
-  const [events] = useState([
-    {
-      id: 1,
-      title: '2025년 신년 경품 이벤트',
-      status: 'active',
-      startDate: '2025-01-15',
-      endDate: '2025-01-15',
-      participants: 1247,
-      maxParticipants: 2000,
-      organization: '모나드 테크',
-      description: '새해를 맞이하여 진행하는 특별한 경품 이벤트입니다.'
-    },
-    {
-      id: 2,
-      title: '봄맞이 쇼핑몰 이벤트',
-      status: 'upcoming',
-      startDate: '2025-03-01',
-      endDate: '2025-03-31',
-      participants: 0,
-      maxParticipants: 1000,
-      organization: '모나드 테크',
-      description: '봄 시즌을 맞이한 쇼핑몰 특별 이벤트입니다.'
-    },
-    {
-      id: 3,
-      title: '여름 휴가 특별 이벤트',
-      status: 'ended',
-      startDate: '2024-07-15',
-      endDate: '2024-08-15',
-      participants: 2156,
-      maxParticipants: 3000,
-      organization: '모나드 테크',
-      description: '여름 휴가 시즌을 위한 특별한 이벤트였습니다.'
-    },
-    {
-      id: 4,
-      title: '가을 문화 축제',
-      status: 'draft',
-      startDate: '2025-09-01',
-      endDate: '2025-09-30',
-      participants: 0,
-      maxParticipants: 1500,
-      organization: '모나드 테크',
-      description: '가을 문화 축제와 함께하는 특별 이벤트입니다.'
-    }
-  ]);
+  // API에서 불러온 이벤트 데이터
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem('adminToken') || '';
+        const data = await getMyEvents(token);
+        setEvents(data);
+      } catch (e: any) {
+        setError('이벤트 목록을 불러오지 못했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,8 +68,12 @@ const EventList = () => {
   };
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.organization.toLowerCase().includes(searchTerm.toLowerCase());
+    // 백엔드 필드명에 맞게 매핑 (title, organization 등은 없을 수 있음)
+    const title = event.name || event.title || '';
+    const organization = event.organization || '';
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         organization.toLowerCase().includes(searchTerm.toLowerCase());
+    // status 필드는 없을 수 있으니 기본값 처리
     const matchesFilter = filterStatus === 'all' || event.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -108,6 +87,12 @@ const EventList = () => {
     navigate('/event-creation');
   };
 
+  if (loading) {
+    return <div className="p-8 text-center text-lg">이벤트 목록을 불러오는 중...</div>;
+  }
+  if (error) {
+    return <div className="p-8 text-center text-red-500">{error}</div>;
+  }
   return (
     <Layout 
       isDarkMode={isDarkMode}
@@ -192,10 +177,10 @@ const EventList = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 line-clamp-2">
-                      {event.title}
+                      {event.name || event.title}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {event.organization}
+                      {event.organization || ''}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -217,7 +202,7 @@ const EventList = () => {
                 <div className="flex items-center space-x-4 mb-4 text-sm text-gray-500 dark:text-gray-400">
                   <div className="flex items-center space-x-1">
                     <Calendar size={14} />
-                    <span>{formatDate(event.startDate)} ~ {formatDate(event.endDate)}</span>
+                    <span>{formatDate(event.start_at || event.startDate)} ~ {formatDate(event.end_at || event.endDate)}</span>
                   </div>
                 </div>
 
@@ -225,9 +210,9 @@ const EventList = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400">
                     <Users size={14} />
-                    <span>{event.participants.toLocaleString()}</span>
-                    {event.maxParticipants && (
-                      <span>/ {event.maxParticipants.toLocaleString()}</span>
+                    <span>{(event.participants || 0).toLocaleString()}</span>
+                    {event.participant_cap && (
+                      <span>/ {event.participant_cap.toLocaleString()}</span>
                     )}
                   </div>
                   
