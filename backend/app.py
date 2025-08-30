@@ -1,3 +1,8 @@
+
+from web3 import Web3
+from dotenv import load_dotenv
+import json
+
 import csv
 import io
 import qrcode
@@ -7,6 +12,15 @@ from models import create_all, User, session_scope
 import jwt
 import datetime
 
+
+load_dotenv()
+
+# 컨트랙트/네트워크 환경변수
+CONTRACT_ADDRESS = os.environ.get("CONTRACT_ADDRESS")
+CHAIN_ID = int(os.environ.get("CHAIN_ID", "0"))
+RAFFLE_NAME = os.environ.get("RAFFLE_NAME", "SponsoredRaffle")
+RAFFLE_VERSION = os.environ.get("RAFFLE_VERSION", "1")
+RPC_URL = os.environ.get("RPC_URL")
 
 
 from werkzeug.utils import secure_filename
@@ -254,6 +268,66 @@ def get_event_csv_fields(event_id):
             return jsonify({'fields': headers})
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+
+
+
+# ABI 로드
+CONTRACT_ABI = None
+try:
+    abi_path = os.path.join(os.path.dirname(__file__), '../artifacts/contracts/SponsoredRaffle.sol/SponsoredRaffle.json')
+    with open(abi_path) as f:
+        CONTRACT_ABI = json.load(f)["abi"]
+except Exception as e:
+    print("[WARN] ABI 파일 로드 실패:", e)
+
+# web3 인스턴스 및 컨트랙트
+w3 = Web3(Web3.HTTPProvider(RPC_URL)) if RPC_URL else None
+raffle_contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=CONTRACT_ABI) if w3 and CONTRACT_ABI and CONTRACT_ADDRESS else None
+
+
+
+# 컨트랙트 config 정보 반환
+@app.route('/api/raffle/config', methods=['GET'])
+def get_raffle_config():
+    if not raffle_contract:
+        return jsonify({'error': 'contract not configured'}), 500
+    try:
+        raffle_id = raffle_contract.functions.raffleId().call()
+        return jsonify({
+            'contract': CONTRACT_ADDRESS,
+            'chainId': CHAIN_ID,
+            'name': RAFFLE_NAME,
+            'version': RAFFLE_VERSION,
+            'raffleId': int(raffle_id)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 라플 락(lock) 트랜잭션
+@app.route('/api/raffle/lock', methods=['POST'])
+def raffle_lock():
+    if not raffle_contract:
+        return jsonify({'error': 'contract not configured'}), 500
+    try:
+        # PRIVATE_KEY로 서명자 계정 준비
+        private_key = os.environ.get('PRIVATE_KEY')
+        if not private_key:
+            return jsonify({'error': 'PRIVATE_KEY not set'}), 500
+        acct = w3.eth.account.from_key(private_key)
+        tx = raffle_contract.functions.lock().build_transaction({
+            'from': acct.address,
+            'nonce': w3.eth.get_transaction_count(acct.address),
+            'gas': 300000,
+            'gasPrice': w3.eth.gas_price,
+            'chainId': CHAIN_ID
+        })
+        signed = w3.eth.account.sign_transaction(tx, private_key)
+        tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+        rcpt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        return jsonify({'ok': True, 'txHash': rcpt.transactionHash.hex()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/health')
 def health():

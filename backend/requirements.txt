@@ -7,3 +7,5 @@ cryptography
 PyJWT
 qrcode
 pillow
+web3
+python-dotenv
